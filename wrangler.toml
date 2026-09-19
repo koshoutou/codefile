@@ -1,0 +1,17 @@
+name = "codefile"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "CODEFILE_KV"
+id = "YOUR_KV_NAMESPACE_ID_HERE"
+
+[[r2_buckets]]
+binding = "STATIC_ASSETS"
+bucket_name = "codefile-static-assets"
+
+[vars]
+AUTH_USERNAME = "inkcoo"
+PASSWORD_SALT = "codefile_salt_2024"
+PASSWORD_HASH = "c816ff5d672fff78ca9256fc7bfb9b8c31d7fc03a02a2f8c24170e8e13ffeda7"
+SESSION_TTL = "604800"

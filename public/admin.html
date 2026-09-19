@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codefile - 管理后台</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="logo">Codefile</div>
+      <div class="project-name" id="current-project-name">未选择项目</div>
+      <div class="link-bar" id="link-bar" style="display:none;">
+        <input type="text" class="link-input" id="public-link" readonly>
+        <button class="btn btn-secondary btn-sm" onclick="copyLink()">复制</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="project-settings-btn" style="display:none;" onclick="showProjectSettings()">设置</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">登出</button>
+    </div>
+
+    <!-- Main body -->
+    <div class="admin-body">
+      <!-- Left sidebar -->
+      <div class="sidebar glass">
+        <div class="sidebar-header">
+          <h3>项目</h3>
+          <button class="btn btn-secondary btn-sm" onclick="showCreateProjectModal()">+ 新建</button>
+        </div>
+        <div class="sidebar-section" id="project-list">
+          <div class="empty-state">加载中...</div>
+        </div>
+        <div class="sidebar-section" id="file-tree-section" style="display:none;">
+          <div class="sidebar-header" style="padding: 0 0 8px 0; border: none;">
+            <h3>文件</h3>
+          </div>
+          <ul class="file-tree" id="file-tree"></ul>
+        </div>
+        <div class="sidebar-actions" id="file-actions" style="display:none;">
+          <button class="btn btn-secondary btn-sm" onclick="showCreateFileModal()">新文件</button>
+          <button class="btn btn-secondary btn-sm" onclick="showUploadModal()">上传</button>
+        </div>
+      </div>
+
+      <!-- Right editor panel -->
+      <div class="editor-panel glass">
+        <div class="editor-toolbar" id="editor-toolbar" style="display:none;">
+          <span class="file-path" id="current-file-path"></span>
+          <button class="btn btn-secondary btn-sm" id="download-btn" onclick="downloadCurrentFile()">下载</button>
+          <button class="btn btn-primary btn-sm" onclick="saveFile()">保存</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFile()">删除</button>
+        </div>
+        <div class="editor-container" id="editor-container">
+          <div class="editor-placeholder">选择或创建一个文件开始编辑</div>
+        </div>
+        <div class="editor-statusbar" id="editor-statusbar" style="display:none;">
+          <span id="file-size-info"></span>
+          <span id="file-type-info"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Project -->
+  <div class="modal-overlay" id="modal-project">
+    <div class="modal glass">
+      <h3>新建项目</h3>
+      <div class="modal-field">
+        <label>项目名称</label>
+        <input type="text" id="project-name-input" placeholder="项目名称" onkeydown="if(event.key==='Enter')createProject()">
+      </div>
+      <div class="modal-field">
+        <label>自定义路径（可选）</label>
+        <input type="text" id="project-slug-input" placeholder="如: 2026txt（留空则自动生成）">
+        <p class="modal-hint">访问链接将为 /web/api=你的自定义路径</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-project')">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="createProject()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create File -->
+  <div class="modal-overlay" id="modal-file">
+    <div class="modal glass">
+      <h3>新建文件</h3>
+      <input type="text" id="file-path-input" placeholder="文件路径 (如: css/style.css)" onkeydown="if(event.key==='Enter')createFile()">
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-file')">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="createFile()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Move/Rename -->
+  <div class="modal-overlay" id="modal-move">
+    <div class="modal glass">
+      <h3 id="move-title">移动/重命名</h3>
+      <p id="move-current" style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;"></p>
+      <input type="text" id="move-new-path" placeholder="新路径" onkeydown="if(event.key==='Enter')executeMove()">
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-move')">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="executeMove()">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Project Settings -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal glass">
+      <h3>项目设置</h3>
+      <div class="modal-field">
+        <label>项目名称</label>
+        <input type="text" id="settings-name" placeholder="项目名称">
+      </div>
+      <div class="modal-field">
+        <label>自定义路径</label>
+        <input type="text" id="settings-slug" placeholder="如: 2026txt（留空使用默认ID）">
+        <p class="modal-hint">访问链接将为 /web/api=你的自定义路径</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-settings')">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="saveProjectSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm Delete -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal glass">
+      <h3 id="confirm-title">确认删除</h3>
+      <p id="confirm-message" style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-confirm')">取消</button>
+        <button class="btn btn-danger btn-sm" id="confirm-btn">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div class="context-menu glass" id="context-menu" style="display:none;"></div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Upload progress -->
+  <div class="upload-progress glass" id="upload-progress">
+    <div class="label">上传中...</div>
+    <div class="bar"><div class="fill" id="upload-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Image preview overlay -->
+  <div class="image-preview-overlay" id="image-preview" style="display:none;" onclick="closeImagePreview()">
+    <div class="image-preview-container">
+      <img id="image-preview-img" src="" alt="预览">
+      <div class="image-preview-info" id="image-preview-info"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="/js/editor.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
